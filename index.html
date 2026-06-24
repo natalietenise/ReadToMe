@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Read Aloud</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a2e;
+    --ink-mid: #4a4a6a;
+    --ink-light: #9090b0;
+    --paper: #f7f5f0;
+    --paper-warm: #ede9e0;
+    --accent: #c85a2a;
+    --accent-light: #f0d5c8;
+    --track: #ddd8ce;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+  }
+
+  header { text-align: center; margin-bottom: 36px; }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  h1 em { font-style: italic; color: var(--accent); }
+
+  .subtitle { margin-top: 8px; font-size: 0.9rem; color: var(--ink-light); font-weight: 300; }
+
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: 0 2px 20px rgba(26,26,46,0.07);
+    padding: 28px;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  /* PDF Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--paper-warm);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 14px;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon { font-size: 1.5rem; margin-bottom: 6px; }
+
+  .upload-text { font-size: 0.88rem; color: var(--ink-mid); }
+
+  .upload-text strong { color: var(--accent); }
+
+  .pdf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
+
+  .pdf-badge .remove { font-size: 1rem; line-height: 1; }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    border: 1.5px solid var(--paper-warm);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 300;
+    color: var(--ink);
+    background: var(--paper);
+    resize: vertical;
+    line-height: 1.7;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--ink-light); }
+
+  .controls-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .select-wrap { flex: 1; min-width: 160px; }
+
+  label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-light);
+    margin-bottom: 6px;
+  }
+
+  select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--paper-warm);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: var(--paper);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239090b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .slider-wrap { min-width: 120px; }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+    height: 4px;
+    border-radius: 2px;
+  }
+
+  .range-val { font-size: 0.8rem; color: var(--ink-mid); text-align: right; margin-top: 3px; }
+
+  .progress-section { margin-top: 24px; }
+
+  .sentence-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--ink-light);
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 5px;
+    background: var(--track);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  .reading-display {
+    margin-top: 18px;
+    padding: 16px;
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--ink);
+    min-height: 56px;
+    display: none;
+  }
+
+  .reading-display.active { display: block; }
+
+  .playback {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, background 0.15s;
+  }
+
+  .btn:active { transform: scale(0.93); }
+
+  .btn-skip {
+    width: 48px;
+    height: 48px;
+    background: var(--paper-warm);
+    color: var(--ink-mid);
+  }
+
+  .btn-skip:hover { background: var(--track); }
+
+  .btn-play {
+    width: 68px;
+    height: 68px;
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 18px rgba(200,90,42,0.35);
+  }
+
+  .btn-play:hover { background: #b04d22; }
+
+  .loading-msg {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--ink-light);
+    margin-top: 10px;
+    min-height: 20px;
+  }
+
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Read <em>Aloud</em></h1>
+  <p class="subtitle">Paste text or upload a PDF and listen</p>
+</header>
+
+<div class="card">
+
+  <!-- PDF Upload -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="pdfInput" accept=".pdf">
+    <div class="upload-icon">📄</div>
+    <div class="upload-text"><strong>Upload a PDF</strong> or drag and drop it here</div>
+  </div>
+
+  <div id="pdfBadge" style="display:none;">
+    <span class="pdf-badge" id="pdfBadgeLabel">
+      <span id="pdfName"></span>
+      <span class="remove" id="removePdf" title="Remove PDF">×</span>
+    </span>
+  </div>
+
+  <textarea id="text" placeholder="Or paste / type text here…"></textarea>
+
+  <div class="loading-msg" id="loadingMsg"></div>
+
+  <div class="controls-row">
+    <div class="select-wrap">
+      <label for="voice">Voice</label>
+      <select id="voice"><option value="">Loading voices…</option></select>
+    </div>
+    <div class="slider-wrap">
+      <label>Speed <span class="range-val" id="rateVal">1.0×</span></label>
+      <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+    </div>
+    <div class="slider-wrap">
+      <label>Pitch <span class="range-val" id="pitchVal">1.0</span></label>
+      <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <div class="sentence-info">
+      <span id="sentenceCount">—</span>
+      <span id="timeEst">—</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="reading-display" id="readingDisplay"></div>
+  </div>
+
+  <div class="playback">
+    <button class="btn btn-skip" id="btnBack" title="Previous sentence">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M6 6v12M18 6L10 12l8 6V6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button class="btn btn-play" id="btnPlay" title="Play">
+      <svg id="iconPlay" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+        <path id="iconPath" d="M8 5v14l11-7z"/>
+      </svg>
+    </button>
+    <button class="btn btn-skip" id="btnForward" title="Next sentence">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M18 6v12M6 6l8 6-8 6V6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+  // pdf.js worker
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  const synth = window.speechSynthesis;
+  let voices = [];
+  let sentences = [];
+  let currentIndex = 0;
+  let isPlaying = false;
+
+  const voiceSelect  = document.getElementById('voice');
+  const textarea     = document.getElementById('text');
+  const rateSlider   = document.getElementById('rate');
+  const pitchSlider  = document.getElementById('pitch');
+  const rateVal      = document.getElementById('rateVal');
+  const pitchVal     = document.getElementById('pitchVal');
+  const btnPlay      = document.getElementById('btnPlay');
+  const btnBack      = document.getElementById('btnBack');
+  const btnForward   = document.getElementById('btnForward');
+  const progressFill = document.getElementById('progressFill');
+  const readingDisplay = document.getElementById('readingDisplay');
+  const sentenceCount  = document.getElementById('sentenceCount');
+  const timeEst        = document.getElementById('timeEst');
+  const iconPath       = document.getElementById('iconPath');
+  const pdfInput       = document.getElementById('pdfInput');
+  const uploadZone     = document.getElementById('uploadZone');
+  const pdfBadge       = document.getElementById('pdfBadge');
+  const pdfName        = document.getElementById('pdfName');
+  const removePdf      = document.getElementById('removePdf');
+  const loadingMsg     = document.getElementById('loadingMsg');
+
+  // ── Voices ──────────────────────────────────────────────
+  function loadVoices() {
+    const all = synth.getVoices();
+    if (!all.length) return;
+
+    const english = all.filter(v => v.lang.startsWith('en'));
+    voices = english.length ? english : all;
+
+    voiceSelect.innerHTML = '';
+    const preferred = voices.filter(v =>
+      /natural|premium|enhanced|neural/i.test(v.name) ||
+      /Google|Microsoft|Apple/i.test(v.name)
+    );
+    const list = preferred.length ? preferred : voices;
+
+    list.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = voices.indexOf(v);
+      opt.textContent = v.name.replace(/Microsoft |Google /, '').replace(/ \(.*\)/, '');
+      voiceSelect.appendChild(opt);
+    });
+  }
+
+  // Load voices — handle both immediate and async cases
+  loadVoices();
+  if (typeof synth.onvoiceschanged !== 'undefined') {
+    synth.onvoiceschanged = loadVoices;
+  }
+  // Fallback poll for browsers that don't fire the event
+  let voicePoll = setInterval(() => {
+    if (synth.getVoices().length) { loadVoices(); clearInterval(voicePoll); }
+  }, 200);
+  setTimeout(() => clearInterval(voicePoll), 5000);
+
+  // ── Sliders ──────────────────────────────────────────────
+  rateSlider.addEventListener('input', () => {
+    rateVal.textContent = parseFloat(rateSlider.value).toFixed(1) + '×';
+    estimateTime();
+  });
+  pitchSlider.addEventListener('input', () => {
+    pitchVal.textContent = parseFloat(pitchSlider.value).toFixed(1);
+  });
+
+  // ── PDF Upload ───────────────────────────────────────────
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') handlePDF(file);
+  });
+
+  pdfInput.addEventListener('change', () => {
+    if (pdfInput.files[0]) handlePDF(pdfInput.files[0]);
+  });
+
+  removePdf.addEventListener('click', () => {
+    pdfBadge.style.display = 'none';
+    pdfInput.value = '';
+    textarea.value = '';
+    stopAll();
+    resetProgress();
+  });
+
+  async function handlePDF(file) {
+    loadingMsg.textContent = 'Extracting text from PDF…';
+    pdfName.textContent = file.name.length > 30 ? file.name.slice(0, 28) + '…' : file.name;
+    pdfBadge.style.display = 'block';
+    stopAll();
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n\n';
+      }
+      textarea.value = fullText.trim();
+      loadingMsg.textContent = `Loaded ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''}.`;
+      setTimeout(() => { loadingMsg.textContent = ''; }, 3000);
+      estimateTime();
+    } catch (err) {
+      loadingMsg.textContent = 'Could not read PDF. Try copying the text manually.';
+      console.error(err);
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function splitSentences(text) {
+    return text.match(/[^.!?…]+(?:[.!?…]+(?:\s|$)|\s*$)/g)
+      ?.map(s => s.trim()).filter(s => s.length > 1) || [];
+  }
+
+  function estimateTime() {
+    const words = textarea.value.trim().split(/\s+/).filter(Boolean).length;
+    if (!words) { timeEst.textContent = '—'; return; }
+    const wpm = 150 * parseFloat(rateSlider.value);
+    const mins = words / wpm;
+    timeEst.textContent = mins < 1 ? `~${Math.round(mins * 60)}s` : `~${Math.ceil(mins)} min`;
+  }
+
+  function updateProgress() {
+    const pct = sentences.length ? (currentIndex / sentences.length) * 100 : 0;
+    progressFill.style.width = pct + '%';
+    sentenceCount.textContent = sentences.length
+      ? `Sentence ${Math.min(currentIndex + 1, sentences.length)} of ${sentences.length}`
+      : '—';
+  }
+
+  function resetProgress() {
+    sentences = [];
+    currentIndex = 0;
+    progressFill.style.width = '0%';
+    sentenceCount.textContent = '—';
+    timeEst.textContent = '—';
+    readingDisplay.classList.remove('active');
+  }
+
+  function setIcon(playing) {
+    iconPath.setAttribute('d', playing
+      ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z'
+      : 'M8 5v14l11-7z');
+  }
+
+  function stopAll() {
+    synth.cancel();
+    isPlaying = false;
+    setIcon(false);
+    readingDisplay.classList.remove('active');
+  }
+
+  // ── Playback ─────────────────────────────────────────────
+  function speakSentence(index) {
+    if (!sentences.length || index >= sentences.length) {
+      stopAll();
+      resetProgress();
+      return;
+    }
+    synth.cancel();
+    currentIndex = Math.max(0, index);
+    updateProgress();
+
+    readingDisplay.textContent = sentences[currentIndex];
+    readingDisplay.classList.add('active');
+
+    const utt = new SpeechSynthesisUtterance(sentences[currentIndex]);
+    const vi = parseInt(voiceSelect.value);
+    if (!isNaN(vi) && voices[vi]) utt.voice = voices[vi];
+    utt.rate  = parseFloat(rateSlider.value);
+    utt.pitch = parseFloat(pitchSlider.value);
+
+    utt.onend   = () => { if (isPlaying) speakSentence(currentIndex + 1); };
+    utt.onerror = (e) => { if (e.error !== 'interrupted' && isPlaying) speakSentence(currentIndex + 1); };
+
+    synth.speak(utt);
+  }
+
+  btnPlay.addEventListener('click', () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    if (isPlaying) {
+      stopAll();
+    } else {
+      sentences = splitSentences(text);
+      if (!sentences.length) return;
+      if (currentIndex >= sentences.length) currentIndex = 0;
+      isPlaying = true;
+      setIcon(true);
+      estimateTime();
+      speakSentence(currentIndex);
+    }
+  });
+
+  btnBack.addEventListener('click', () => {
+    if (!sentences.length) sentences = splitSentences(textarea.value.trim());
+    const target = Math.max(0, currentIndex - 1);
+    if (isPlaying) {
+      speakSentence(target);
+    } else {
+      currentIndex = target;
+      updateProgress();
+      if (sentences[currentIndex]) {
+        readingDisplay.textContent = sentences[currentIndex];
+        readingDisplay.classList.add('active');
+      }
+    }
+  });
+
+  btnForward.addEventListener('click', () => {
+    if (!sentences.length) sentences = splitSentences(textarea.value.trim());
+    const target = Math.min(sentences.length - 1, currentIndex + 1);
+    if (isPlaying) {
+      speakSentence(target);
+    } else {
+      currentIndex = target;
+      updateProgress();
+      if (sentences[currentIndex]) {
+        readingDisplay.textContent = sentences[currentIndex];
+        readingDisplay.classList.add('active');
+      }
+    }
+  });
+
+  textarea.addEventListener('input', () => {
+    if (isPlaying) stopAll();
+    resetProgress();
+    estimateTime();
+  });
+</script>
+</body>
+</html>
